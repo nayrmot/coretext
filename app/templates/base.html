@@ -1,7 +1,85 @@
-<!DOCTYPE html> 
-<html> 
-<head><title>CoreText</title></head> 
-<body> 
-    {% block content %}{% endblock %} 
-</body> 
-</html> 
+<!-- app/templates/base.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }} - CoreText</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .sidebar { min-height: calc(100vh - 56px); background-color: #f8f9fa; }
+        .content { padding: 20px; }
+        .nav-link { color: #333; }
+        .nav-link:hover, .nav-link.active { background-color: #e9ecef; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">CoreText</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('cases') }}">Cases</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('search') }}">Search</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            {% if show_sidebar|default(True) %}
+            <div class="col-md-3 col-lg-2 sidebar pt-3">
+                {% block sidebar %}
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('cases') }}">
+                            <i class="bi bi-folder"></i> All Cases
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('new_case') }}">
+                            <i class="bi bi-folder-plus"></i> New Case
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('search') }}">
+                            <i class="bi bi-search"></i> Search Documents
+                        </a>
+                    </li>
+                </ul>
+                {% endblock %}
+            </div>
+            <div class="col-md-9 col-lg-10 content">
+            {% else %}
+            <div class="col-12 content">
+            {% endif %}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

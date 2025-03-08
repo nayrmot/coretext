@@ -1,28 +1,42 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>CoreText - Document Management</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #2c3e50; }
-        .card { border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome to CoreText</h1>
+<!-- app/templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Welcome to CoreText</h1>
+    <p class="lead">Document Management System with Bates Numbering</p>
+    <hr class="my-4">
+    <p>CoreText helps you manage your legal documents with automatic Bates numbering and organization.</p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('cases') }}" role="button">View Cases</a>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
         <div class="card">
-            <h2>Document Management System</h2>
-            <p>This application helps you manage legal documents with Bates numbering.</p>
-            <p>Features coming soon:</p>
-            <ul>
-                <li>Case management</li>
-                <li>Document uploads</li>
-                <li>Automatic Bates numbering</li>
-                <li>Google Drive integration</li>
-            </ul>
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-folder"></i> Case Management</h5>
+                <p class="card-text">Organize your documents by case for easy access.</p>
+                <a href="{{ url_for('cases') }}" class="btn btn-outline-primary">Manage Cases</a>
+            </div>
         </div>
     </div>
-</body>
-</html>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Document Uploads</h5>
+                <p class="card-text">Upload documents and automatically assign Bates numbers.</p>
+                <a href="{{ url_for('cases') }}" class="btn btn-outline-primary">Upload Documents</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-search"></i> Search</h5>
+                <p class="card-text">Find documents by Bates number, filename, or content.</p>
+                <a href="{{ url_for('search') }}" class="btn btn-outline-primary">Search Documents</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

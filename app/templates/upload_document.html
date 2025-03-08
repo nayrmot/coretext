@@ -10,10 +10,13 @@
         label { display: block; margin-bottom: 5px; }
         input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+        .nav-links { margin-bottom: 20px; }
+        .nav-links a { margin-right: 15px; color: #3498db; text-decoration: none; }
+        .card { border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-        <!-- Add this near the top of each template's body section -->
+    <!-- Add this near the top of each template's body section -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         <div class="flash-messages" style="margin-bottom: 20px;">
@@ -26,28 +29,32 @@
         </div>
     {% endif %}
     {% endwith %}
+
     <div class="container">
-        <h1>New Case</h1>
-        <form method="post">
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}">Home</a> &gt;
+            <a href="{{ url_for('cases') }}">Cases</a> &gt;
+            <a href="{{ url_for('view_case', case_id=case.id) }}">{{ case.case_name }}</a> &gt;
+            <span>Upload Document</span>
+        </div>
+        
+        <h1>Upload Document</h1>
+        
+        <div class="card">
+            <h2>Case: {{ case.case_name }}</h2>
+            <p><strong>Next Bates Number:</strong> {{ case.next_bates_number }}</p>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data">
             <div class="form-group">
-                <label for="case_name">Case Name *</label>
-                <input type="text" id="case_name" name="case_name" required>
+                <label for="file">Select Document</label>
+                <input type="file" id="file" name="file" required>
+                <p style="color: #666; font-size: 0.9em;">Supported formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</p>
             </div>
-            <div class="form-group">
-                <label for="case_number">Case Number</label>
-                <input type="text" id="case_number" name="case_number">
-            </div>
-            <div class="form-group">
-                <label for="bates_prefix">Bates Prefix</label>
-                <input type="text" id="bates_prefix" name="bates_prefix" placeholder="Leave blank to generate from case name">
-            </div>
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" rows="4"></textarea>
-            </div>
+            
             <div>
-                <button type="submit" class="btn">Create Case</button>
-                <a href="{{ url_for('cases') }}" style="margin-left: 10px;">Cancel</a>
+                <button type="submit" class="btn">Upload Document</button>
+                <a href="{{ url_for('view_case', case_id=case.id) }}" style="margin-left: 10px;">Cancel</a>
             </div>
         </form>
     </div>

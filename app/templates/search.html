@@ -1,0 +1,64 @@
+<!-- app/templates/search.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Search Documents</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('search') }}">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="q" class="form-label">Search Term</label>
+                    <input type="text" class="form-control" id="q" name="q" placeholder="Bates number, filename..." value="{{ request.args.get('q', '') }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="case_id" class="form-label">Case</label>
+                    <select class="form-select" id="case_id" name="case_id">
+                        <option value="">All Cases</option>
+                        {% for case in cases %}
+                            <option value="{{ case.id }}" {% if request.args.get('case_id')|int == case.id %}selected{% endif %}>{{ case.case_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if results %}
+    <h2>Search Results</h2>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Bates #</th>
+                    <th>Filename</th>
+                    <th>Case</th>
+                    <th>Pages</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in results %}
+                    <tr>
+                        <td>{{ doc.bates_start }} - {{ doc.bates_end }}</td>
+                        <td>{{ doc.original_filename }}</td>
+                        <td>{{ doc.case.case_name }}</td>
+                        <td>{{ doc.page_count }}</td>
+                        <td>
+                            <a href="{{ url_for('view_document', document_id=doc.id) }}" class="btn btn-sm btn-primary" target="_blank">View</a>
+                            <a href="{{ url_for('download_document', document_id=doc.id) }}" class="btn btn-sm btn-outline-secondary">Download</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% elif request.args.get('q') %}
+    <div class="alert alert-info">No documents found matching your search criteria.</div>
+{% endif %}
+{% endblock %}

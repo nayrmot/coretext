@@ -1,0 +1,30 @@
+<!-- app/templates/batch_upload.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Batch Upload Documents</h1>
+<h4>Case: {{ case.case_name }}</h4>
+
+<div class="card mt-4">
+    <div class="card-body">
+        <form action="{{ url_for('batch_upload', case_id=case.id) }}" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="files" class="form-label">Select Multiple Documents</label>
+                <input class="form-control" type="file" id="files" name="files[]" multiple>
+                <div class="form-text">
+                    You can select multiple files at once. Bates numbers will be assigned sequentially.
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="alert alert-info">
+                    <strong>Next Bates Number:</strong> {{ case.next_bates_number }}
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Upload Documents</button>
+                <a href="{{ url_for('view_case', case_id=case.id) }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
