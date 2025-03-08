@@ -1,0 +1,6 @@
+name: coretext
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+prefix: C:\Users\ThomasRyan\.conda\envs\coretext

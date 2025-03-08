@@ -1,0 +1,21 @@
+runtime: python39
+service: coretext
+
+env_variables:
+  FLASK_ENV: "production"
+  SECRET_KEY: "your-secure-production-key"
+  GOOGLE_CLIENT_SECRETS_FILE: "credentials.json"
+  APP_NAME: "CoreText"
+  CLOUD_SQL_CONNECTION_NAME: "coretext-452113:us-central1:coretext-db"
+  DB_USER: "tryan"
+  DB_HOST: "127.0.0.1"
+  DB_NAME: "coretext_db"
+
+handlers:
+- url: /static
+  static_dir: app/static
+
+- url: /.*
+  script: auto
+
+entrypoint: gunicorn -b : wsgi:app
