@@ -1,6 +1,7 @@
 # File: app/models/document.py
 from app import db
 from datetime import datetime
+from app.models.tag import DocumentTag
 
 class Document(db.Model):
     """Document model for CoreText document management system."""
@@ -9,6 +10,9 @@ class Document(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     case_id = db.Column(db.Integer, db.ForeignKey('cases.id'), nullable=False)
+    tags = db.relationship('Tag', secondary='document_tags', 
+                      backref=db.backref('documents', lazy='dynamic'),
+                      overlaps="document_associations,tag,document,tag_associations")
     
     # File information
     original_filename = db.Column(db.String(255), nullable=False)
@@ -45,3 +49,8 @@ class Document(db.Model):
             return 'bi-file-image'
         else:
             return 'bi-file-text'
+        
+        
+
+
+

@@ -1,0 +1,13 @@
+<div class="mt-3">
+    <h5>Tags:</h5>
+    {% if document.tags %}
+        {% for tag in document.tags %}
+        <span class="badge" style="background-color: {{ tag.color }}">{{ tag.name }}</span>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted">No tags</p>
+    {% endif %}
+    <a href="{{ url_for('document_tags', document_id=document.id) }}" class="btn btn-sm btn-outline-primary ml-2">
+        Manage Tags
+    </a>
+</div>

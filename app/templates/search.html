@@ -29,6 +29,22 @@
     </div>
 </div>
 
+<div class="form-group mt-3">
+    <label>Filter by Tags:</label>
+    <div class="row">
+        {% for tag in default_tags %}
+        <div class="col-md-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="tag_ids" value="{{ tag.id }}" id="tag{{ tag.id }}">
+                <label class="form-check-label" for="tag{{ tag.id }}">
+                    <span class="badge" style="background-color: {{ tag.color }}">{{ tag.name }}</span>
+                </label>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
 {% if results %}
     <h2>Search Results</h2>
     <div class="table-responsive">

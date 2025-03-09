@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Tags for {{ case.case_name }}</h1>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>Add New Tag</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('case_tags', case_id=case.id) }}" method="post">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="tag_name" class="form-label">Tag Name</label>
+                        <input type="text" class="form-control" id="tag_name" name="tag_name" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="tag_color" class="form-label">Tag Color</label>
+                        <input type="color" class="form-control" id="tag_color" name="tag_color" value="#6c757d">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Tag</button>
+            </form>
+        </div>
+    </div>
+    
+    <h2 class="mt-4">Default Tags</h2>
+    <div class="row">
+        {% for tag in default_tags %}
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-body" style="border-left: 5px solid {{ tag.color }}">
+                    <h5 class="card-title">{{ tag.name }}</h5>
+                    <p class="card-text text-muted">Default tag</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <h2 class="mt-4">Case-Specific Tags</h2>
+    {% if case_tags %}
+    <div class="row">
+        {% for tag in case_tags %}
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-body" style="border-left: 5px solid {{ tag.color }}">
+                    <h5 class="card-title">{{ tag.name }}</h5>
+                    <form action="{{ url_for('delete_tag', tag_id=tag.id) }}" method="post" 
+                          onsubmit="return confirm('Are you sure you want to delete this tag?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No case-specific tags created yet.</p>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ url_for('case', case_id=case.id) }}" class="btn btn-secondary">Back to Case</a>
+    </div>
+</div>
+{% endblock %}

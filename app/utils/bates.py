@@ -13,8 +13,8 @@ import io
 class BatesManager:
     """Class to handle Bates numbering operations."""
     
-    def __init__(self, page_separator="-"):
-        self.page_separator = page_separator
+    def __init__(self):
+        pass
     
     def process_document(self, case_id, file, upload_folder):
         """
@@ -37,9 +37,13 @@ class BatesManager:
         filename = secure_filename(file.filename)
         file_extension = os.path.splitext(filename)[1].lower()
         
+        # Generate the Bates number in the new format: Prefix-SequenceNumber
+        bates_sequence = case.current_sequence
+        bates_number = f"{case.bates_prefix}-{str(bates_sequence).zfill(6)}"
+        
         # Create a unique filename to avoid overwriting
         base_name = os.path.splitext(filename)[0]
-        unique_filename = f"{base_name}_{case.bates_prefix}{case.current_sequence}{file_extension}"
+        unique_filename = f"{base_name}_{bates_number}{file_extension}"
         file_path = os.path.join(upload_folder, unique_filename)
         
         # Save the file
@@ -62,15 +66,7 @@ class BatesManager:
             except Exception as e:
                 print(f"Error getting page count: {str(e)}")
         
-        # Get next Bates number
-        bates_sequence = case.current_sequence
-        bates_number = f"{case.bates_prefix}{str(bates_sequence).zfill(6)}"
-        
-        # Generate start and end Bates numbers
-        bates_start = f"{bates_number}{self.page_separator}001"
-        bates_end = f"{bates_number}{self.page_separator}{str(page_count).zfill(3)}"
-        
-        # Increment case sequence
+        # Increment case sequence for next document
         case.current_sequence += 1
         db.session.commit()
         
@@ -92,8 +88,8 @@ class BatesManager:
             file_size=file_size,
             bates_number=bates_number,
             bates_sequence=bates_sequence,
-            bates_start=bates_start,
-            bates_end=bates_end,
+            bates_start=bates_number,  # Use the same bates number for start
+            bates_end=bates_number,    # Use the same bates number for end
             page_count=page_count,
             local_path=stamped_file_path
         )
@@ -141,8 +137,8 @@ class BatesManager:
                 except AttributeError:
                     page = pdf_reader.getPage(page_num)
                 
-                # Create a watermark with the Bates number
-                page_bates = f"{bates_number}{self.page_separator}{str(page_num+1).zfill(3)}"
+                # Use the same Bates number for all pages
+                page_bates = bates_number
                 
                 packet = io.BytesIO()
                 c = canvas.Canvas(packet, pagesize=letter)
@@ -183,73 +179,53 @@ class BatesManager:
         
         return output_path
     
-    def search_documents(self, case_id=None, bates_number=None, filename=None, bates_range=None):
-        """
-        Search for documents based on various criteria.
-        
-        Args:
-            case_id: Filter by specific case ID
-            bates_number: Filter by Bates number (partial match)
-            filename: Filter by filename (partial match)
-            bates_range: Tuple of (start_bates, end_bates) to find documents in a range
-            
-        Returns:
-            List of matching documents
-        """
+    def search_documents(self, case_id=None, bates_number=None, filename=None, bates_range=None, tag_ids=None):
+        """Search for documents based on criteria."""
         query = Document.query
         
         if case_id:
-            query = query.filter(Document.case_id == case_id)
-            
+            query = query.filter_by(case_id=case_id)
+        
         if bates_number:
             query = query.filter(
                 db.or_(
-                    Document.bates_number.ilike(f"%{bates_number}%"),
-                    Document.bates_start.ilike(f"%{bates_number}%"),
-                    Document.bates_end.ilike(f"%{bates_number}%")
+                    Document.bates_number.ilike(f'%{bates_number}%'),
+                    Document.bates_start.ilike(f'%{bates_number}%'),
+                    Document.bates_end.ilike(f'%{bates_number}%')
                 )
             )
-            
-        if filename:
-            query = query.filter(Document.original_filename.ilike(f"%{filename}%"))
         
-        if bates_range:
-            start_bates, end_bates = bates_range
-            # This query finds documents that overlap with the specified range
-            # A document overlaps if its end is >= the search start AND its start <= the search end
-            query = query.filter(Document.bates_end >= start_bates).filter(Document.bates_start <= end_bates)
+        if filename:
+            query = query.filter(Document.original_filename.ilike(f'%{filename}%'))
+        
+        if bates_range and len(bates_range) == 2:
+            start, end = bates_range
+            query = query.filter(Document.bates_sequence.between(int(start), int(end)))
+        
+        # Filter by tags if tag_ids provided
+        if tag_ids:
+            from app.models.tag import DocumentTag
+            query = query.join(DocumentTag).filter(DocumentTag.tag_id.in_(tag_ids))
         
         return query.all()
         
     def get_document_by_bates_number(self, bates_number):
         """
-        Find a specific document by exact Bates number or a page within a document.
+        Find a specific document by exact Bates number.
         
         Args:
-            bates_number: The full Bates number to search for (e.g., "ABC000123" or "ABC000123-004")
+            bates_number: The full Bates number to search for (e.g., "ABC-000123")
             
         Returns:
-            Document information and page number (if applicable)
+            Document information
         """
-        # Check if this is a page-specific Bates number
-        if self.page_separator in bates_number:
-            base_bates, page_num = bates_number.split(self.page_separator, 1)
-            try:
-                page_num = int(page_num)
-            except ValueError:
-                page_num = 1
-                
-            # Find the document with this base Bates number
-            document = Document.query.filter_by(bates_number=base_bates).first()
-        else:
-            # Find by exact base Bates number
-            document = Document.query.filter_by(bates_number=bates_number).first()
-            page_num = None
+        # Find by exact Bates number
+        document = Document.query.filter_by(bates_number=bates_number).first()
         
         if document:
             return {
                 'document': document,
-                'page_number': page_num,
-                'is_page_specific': page_num is not None
+                'page_number': None,
+                'is_page_specific': False
             }
         return None

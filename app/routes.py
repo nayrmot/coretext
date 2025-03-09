@@ -213,11 +213,13 @@ def download_document(document_id):
 
 @main_bp.route('/search', methods=['GET', 'POST'])
 def search():
+    def search():
     """Search for documents."""
     if request.method == 'POST':
         bates_number = request.form.get('bates_number', '')
         case_id = request.form.get('case_id')
         filename = request.form.get('filename', '')
+        tag_ids = request.form.getlist('tag_ids')  # Get selected tag IDs
         
         # Check for Bates range search
         bates_range = None
@@ -237,13 +239,17 @@ def search():
             case_id=case_id,
             bates_number=bates_number,
             filename=filename,
-            bates_range=bates_range
+            bates_range=bates_range,
+            tag_ids=tag_ids  # Pass tag IDs to search function
         )
         
         return render_template('search_results.html', results=results, title='Search Results')
     
     cases = Case.query.all()
-    return render_template('search.html', cases=cases, title='Search Documents')
+    default_tags = Tag.query.filter_by(is_default=True).all()
+    
+    return render_template('search.html', cases=cases, default_tags=default_tags, title='Search Documents')
+    
 
 @main_bp.route('/bates/<string:bates_number>')
 def bates_lookup(bates_number):
@@ -267,3 +273,107 @@ def bates_lookup(bates_number):
         page_number=page_number,
         title=f"Bates Number {bates_number}"
     )
+
+@app.route('/tags')
+def list_tags():
+    default_tags = Tag.query.filter_by(is_default=True).all()
+    custom_tags = Tag.query.filter_by(is_default=False).order_by(Tag.case_id).all()
+    return render_template('tags.html', title="Manage Tags", 
+                           default_tags=default_tags, 
+                           custom_tags=custom_tags)
+
+@app.route('/case/<int:case_id>/tags', methods=['GET', 'POST'])
+def case_tags(case_id):
+    case = Case.query.get_or_404(case_id)
+    
+    if request.method == 'POST':
+        tag_name = request.form.get('tag_name')
+        tag_color = request.form.get('tag_color', '#6c757d')
+        
+        if not tag_name:
+            flash('Tag name is required', 'error')
+            return redirect(url_for('case_tags', case_id=case_id))
+        
+        # Check if tag already exists for this case
+        existing_tag = Tag.query.filter_by(name=tag_name, case_id=case_id).first()
+        if existing_tag:
+            flash(f'Tag "{tag_name}" already exists for this case', 'error')
+            return redirect(url_for('case_tags', case_id=case_id))
+        
+        # Create new tag
+        tag = Tag(name=tag_name, color=tag_color, case_id=case_id)
+        db.session.add(tag)
+        db.session.commit()
+        
+        flash(f'Tag "{tag_name}" created successfully', 'success')
+        return redirect(url_for('case_tags', case_id=case_id))
+    
+    # Get all available tags for this case (default + case-specific)
+    default_tags = Tag.query.filter_by(is_default=True).all()
+    case_tags = Tag.query.filter_by(case_id=case_id).all()
+    
+    return render_template('case_tags.html', title=f"Tags for {case.case_name}", 
+                           case=case, 
+                           default_tags=default_tags, 
+                           case_tags=case_tags)
+
+@app.route('/tag/<int:tag_id>/delete', methods=['POST'])
+def delete_tag(tag_id):
+    tag = Tag.query.get_or_404(tag_id)
+    
+    # Don't allow deleting default tags
+    if tag.is_default:
+        flash('Cannot delete default tags', 'error')
+        return redirect(url_for('list_tags'))
+    
+    case_id = tag.case_id
+    
+    # Delete the tag
+    db.session.delete(tag)
+    db.session.commit()
+    
+    flash(f'Tag "{tag.name}" deleted successfully', 'success')
+    
+    # Redirect back to case tags if from a case, otherwise to main tags page
+    if case_id:
+        return redirect(url_for('case_tags', case_id=case_id))
+    else:
+        return redirect(url_for('list_tags'))
+
+@app.route('/document/<int:document_id>/tags', methods=['GET', 'POST'])
+def document_tags(document_id):
+    document = Document.query.get_or_404(document_id)
+    case = Case.query.get(document.case_id)
+    
+    if request.method == 'POST':
+        # Get selected tag IDs
+        tag_ids = request.form.getlist('tag_ids')
+        
+        # Remove all existing tags
+        document.tags = []
+        
+        # Add selected tags
+        if tag_ids:
+            for tag_id in tag_ids:
+                tag = Tag.query.get(tag_id)
+                if tag:
+                    document.tags.append(tag)
+        
+        db.session.commit()
+        flash('Document tags updated successfully', 'success')
+        return redirect(url_for('document_details', document_id=document_id))
+    
+    # Get all available tags for this case (default + case-specific)
+    default_tags = Tag.query.filter_by(is_default=True).all()
+    case_tags = Tag.query.filter_by(case_id=document.case_id).all()
+    all_tags = default_tags + case_tags
+    
+    # Get currently assigned tags
+    current_tag_ids = [tag.id for tag in document.tags]
+    
+    return render_template('document_tags.html', 
+                           title=f"Manage Tags for {document.original_filename}", 
+                           document=document, 
+                           case=case, 
+                           all_tags=all_tags, 
+                           current_tag_ids=current_tag_ids)

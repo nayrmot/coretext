@@ -13,6 +13,7 @@ class Case(db.Model):
     bates_prefix = db.Column(db.String(20), nullable=False)
     current_sequence = db.Column(db.Integer, default=1)
     description = db.Column(db.Text)
+    custom_tags = db.relationship('Tag', backref='parent_case', lazy='dynamic')
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
