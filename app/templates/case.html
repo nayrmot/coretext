@@ -8,6 +8,9 @@
         <a href="{{ url_for('upload_document', case_id=case.id) }}" class="btn btn-success">
             <i class="bi bi-file-earmark-plus"></i> Upload Document
         </a>
+        <a href="{{ url_for('case_prefixes', case_id=case.id) }}" class="btn btn-outline-primary">
+            <i class="fas fa-tag"></i> Manage Bates Prefixes
+        </a>
         <a href="{{ url_for('batch_upload', case_id=case.id) }}" class="btn btn-outline-primary ms-2">
             <i class="bi bi-files"></i> Batch Upload
         </a>
@@ -52,12 +55,13 @@
                             <tbody>
                                 {% for doc in documents %}
                                     <tr>
-                                        <td>{{ doc.bates_start }} to {{ doc.bates_end }}</td>
+                                        <td>{{ doc.bates_start }} {% if doc.page_count > 1 %}to {{ doc.bates_end }}{% endif %}</td>
                                         <td>{{ doc.original_filename }}</td>
                                         <td>{{ doc.page_count }}</td>
                                         <td>{{ doc.upload_date.strftime('%Y-%m-%d') }}</td>
                                         <td>
                                             <a href="{{ url_for('view_document', document_id=doc.id) }}" class="btn btn-sm btn-primary" target="_blank">View</a>
+                                            <a href="{{ url_for('edit_bates', document_id=doc.id) }}" class="btn btn-outline-primary btn-sm">Edit Bates</a>
                                             <a href="{{ url_for('download_document', document_id=doc.id) }}" class="btn btn-sm btn-outline-secondary">Download</a>
                                         </td>
                                     </tr>

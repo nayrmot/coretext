@@ -25,6 +25,8 @@ class Document(db.Model):
     bates_start = db.Column(db.String(50), nullable=False)   # First page Bates (e.g., ABC000001-001)
     bates_end = db.Column(db.String(50), nullable=False)     # Last page Bates (e.g., ABC000001-042)
     page_count = db.Column(db.Integer, default=1)            # Number of pages
+    existing_bates = db.Column(db.Boolean, default=False)
+    bates_note = db.Column(db.String(255))
     
     # Storage information
     local_path = db.Column(db.String(255))                   # Local file path

@@ -1,10 +1,34 @@
 from flask import Flask, render_template, flash, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
+import logging
+from logging.handlers import RotatingFileHandler
 import os
 
 # Initialize extensions
 db = SQLAlchemy()
 
+def configure_logging():
+    log_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
+    os.makedirs(log_folder, exist_ok=True)
+    
+    # Configure rotating file handler instead of regular file handler
+    file_handler = RotatingFileHandler(
+        os.path.join(log_folder, 'coretext.log'),
+        maxBytes=10485760,  # 10 MB
+        backupCount=5
+    )
+    file_handler.setLevel(logging.INFO)
+    
+    # Configure formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    # Configure root logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+    
+    return logger
 
 def create_default_tags(app):
     with app.app_context():
@@ -36,6 +60,10 @@ def create_default_tags(app):
 def create_app(config_name='default'):
     """Create and configure the Flask application."""
     app = Flask(__name__)
+
+    # Configure logging
+    logger = configure_logging()
+    app.logger = logger
     
     # Configuration
     app.config['SECRET_KEY'] = 'dev-key-for-coretext'
@@ -65,6 +93,8 @@ def create_app(config_name='default'):
     @app.route('/case/new', methods=['GET', 'POST'])
     def new_case():
         from app.models.case import Case
+        from app.models.bates_prefix import BatesPrefix
+        
         if request.method == 'POST':
             case_name = request.form['case_name']
             case_number = request.form.get('case_number', '')
@@ -80,10 +110,21 @@ def create_app(config_name='default'):
             case = Case(
                 case_name=case_name,
                 case_number=case_number,
-                bates_prefix=bates_prefix,
-                description=description
+                description=description,
+                bates_prefix=bates_prefix  # Temporarily keep setting this
             )
             db.session.add(case)
+            db.session.commit()
+            
+            # Create the default prefix
+            prefix = BatesPrefix(
+                case_id=case.id,
+                prefix=bates_prefix,
+                description="Default prefix",
+                is_default=True,
+                current_sequence=1
+            )
+            db.session.add(prefix)
             db.session.commit()
             
             flash(f"Case '{case_name}' created successfully", "success")
@@ -104,9 +145,15 @@ def create_app(config_name='default'):
     @app.route('/case/<int:case_id>/upload', methods=['GET', 'POST'])
     def upload_document(case_id):
         from app.models.case import Case
+        from app.models.bates_prefix import BatesPrefix
         from app.utils.bates import BatesManager
         
         case = Case.query.get_or_404(case_id)
+        prefixes = BatesPrefix.query.filter_by(case_id=case_id).all()
+        
+        if not prefixes:
+            flash('You need to define at least one Bates prefix for this case', 'error')
+            return redirect(url_for('case_prefixes', case_id=case_id))
         
         if request.method == 'POST':
             if 'file' not in request.files:
@@ -118,21 +165,46 @@ def create_app(config_name='default'):
                 flash('No file selected', 'error')
                 return redirect(request.url)
             
+            # Get selected prefix or use default
+            prefix_id = request.form.get('prefix_id')
+            try:
+                prefix_id = int(prefix_id)
+                prefix = BatesPrefix.query.filter_by(id=prefix_id, case_id=case_id).first()
+            except (ValueError, TypeError):
+                prefix = BatesPrefix.query.filter_by(case_id=case_id, is_default=True).first()
+            
+            if not prefix:
+                flash('Selected prefix not found', 'error')
+                return redirect(request.url)
+            
+            # Get option for handling existing Bates
+            force_relabel = 'force_relabel' in request.files
+            
             # Process the file with Bates manager
             bates_manager = BatesManager()
             try:
-                document = bates_manager.process_document(
+                document = bates_manager.process_document_with_prefix(
                     case_id,
                     file,
-                    app.config['UPLOAD_FOLDER']
+                    app.config['UPLOAD_FOLDER'],
+                    prefix,
+                    force_relabel=force_relabel
                 )
-                flash(f'Document uploaded and assigned Bates number: {document.bates_number}', 'success')
+                
+                # Create a more detailed flash message
+                if hasattr(document, 'existing_bates') and document.existing_bates:
+                    flash(f'Document uploaded. Existing Bates numbers detected: {document.bates_note}', 'info')
+                elif document.page_count > 1:
+                    flash(f'Document uploaded with {document.page_count} pages. Bates range: {document.bates_start} to {document.bates_end}', 'success')
+                else:
+                    flash(f'Document uploaded and assigned Bates number: {document.bates_number}', 'success')
+                    
             except Exception as e:
                 flash(f'Error processing document: {str(e)}', 'error')
             
             return redirect(url_for('view_case', case_id=case_id))
         
-        return render_template('upload_document.html', title="Upload Document", case=case)
+        return render_template('upload_document.html', title="Upload Document", case=case, prefixes=prefixes)
     
     # Download document
     @app.route('/document/<int:document_id>/download')
@@ -359,6 +431,280 @@ def create_app(config_name='default'):
                             all_tags=all_tags, 
                             current_tag_ids=current_tag_ids)
     
+    @app.route('/document/<int:document_id>/edit-bates', methods=['GET', 'POST'])
+    def edit_bates(document_id):
+        from app.models.document import Document
+        from app.models.case import Case
+        from app.utils.bates import BatesManager
+        
+        document = Document.query.get_or_404(document_id)
+        case = Case.query.get(document.case_id)
+        
+        if request.method == 'POST':
+            new_bates_start = request.form.get('bates_number', '').strip()
+            
+            if not new_bates_start:
+                flash('Bates number cannot be empty', 'error')
+                return redirect(url_for('edit_bates', document_id=document_id))
+            
+            # Parse the new starting Bates number to get prefix and sequence
+            parts = new_bates_start.split('-')
+            if len(parts) < 2:
+                flash('Bates number must be in format Prefix-Number', 'error')
+                return redirect(url_for('edit_bates', document_id=document_id))
+            
+            try:
+                # Get the prefix (everything before the last component)
+                prefix = '-'.join(parts[:-1])
+                # Get the sequence number (last component)
+                start_sequence = int(parts[-1])
+            except ValueError:
+                flash('Invalid Bates number format', 'error')
+                return redirect(url_for('edit_bates', document_id=document_id))
+            
+            # Calculate the ending Bates number
+            end_sequence = start_sequence + document.page_count - 1
+            new_bates_end = f"{prefix}-{str(end_sequence).zfill(6)}"
+            
+            # Check if the Bates range overlaps with any other document in this case
+            overlap = Document.query.filter(
+                Document.case_id == document.case_id,
+                Document.id != document.id,
+                db.or_(
+                    # Check if any document's bates range overlaps with our new range
+                    db.and_(
+                        # Other doc's start <= our end
+                        db.func.cast(db.func.substr(Document.bates_start.split('-')[-1], 1), db.Integer) <= end_sequence,
+                        # Other doc's end >= our start
+                        db.func.cast(db.func.substr(Document.bates_end.split('-')[-1], 1), db.Integer) >= start_sequence
+                    )
+                )
+            ).first()
+            
+            if overlap:
+                flash(f'Bates number range conflicts with another document', 'error')
+                return redirect(url_for('edit_bates', document_id=document_id))
+            
+            # Only re-stamp PDF if it's a PDF file and the Bates start has changed
+            if document.file_extension.lower() == '.pdf' and document.bates_start != new_bates_start:
+                bates_manager = BatesManager()
+                try:
+                    # Re-stamp the PDF with sequential Bates numbers starting from the new start
+                    stamped_file_path = bates_manager._stamp_pdf_sequential(
+                        document.local_path,
+                        prefix,
+                        start_sequence,
+                        document.page_count
+                    )
+                    # Update the document path if stamping was successful
+                    document.local_path = stamped_file_path
+                except Exception as e:
+                    flash(f'Error re-stamping PDF: {str(e)}. Database updated but PDF not re-stamped.', 'warning')
+            
+            # Update the document record
+            old_bates_start = document.bates_start
+            document.bates_number = new_bates_start
+            document.bates_start = new_bates_start
+            document.bates_end = new_bates_end
+            document.bates_sequence = start_sequence
+            
+            db.session.commit()
+            
+            flash(f'Bates number range updated from {old_bates_start} to {new_bates_start}-{new_bates_end}', 'success')
+            return redirect(url_for('view_case', case_id=document.case_id))
+    
+        return render_template('edit_bates.html', title="Edit Bates Number", 
+                         document=document, case=case)
+
+    @app.route('/prefix/<int:prefix_id>/edit', methods=['GET', 'POST'])
+    def edit_prefix(prefix_id):
+        from app.models.bates_prefix import BatesPrefix
+        
+        prefix = BatesPrefix.query.get_or_404(prefix_id)
+        case_id = prefix.case_id
+        
+        if request.method == 'POST':
+            new_prefix_value = request.form.get('prefix', '').strip()
+            description = request.form.get('description', '')
+            start_number = request.form.get('current_sequence', '1')
+            
+            if not new_prefix_value:
+                flash('Prefix cannot be empty', 'error')
+                return redirect(url_for('edit_prefix', prefix_id=prefix_id))
+            
+            try:
+                start_number = int(start_number)
+                if start_number < 1:
+                    raise ValueError()
+            except ValueError:
+                flash('Sequence number must be a positive integer', 'error')
+                return redirect(url_for('edit_prefix', prefix_id=prefix_id))
+            
+            # Check if the new prefix value conflicts with another prefix
+            if new_prefix_value != prefix.prefix:
+                existing = BatesPrefix.query.filter_by(
+                    case_id=case_id, 
+                    prefix=new_prefix_value
+                ).first()
+                
+                if existing:
+                    flash(f'Prefix "{new_prefix_value}" already exists for this case', 'error')
+                    return redirect(url_for('edit_prefix', prefix_id=prefix_id))
+            
+            # Update the prefix
+            prefix.prefix = new_prefix_value
+            prefix.description = description
+            prefix.current_sequence = start_number
+            
+            db.session.commit()
+            
+            flash('Prefix updated successfully', 'success')
+            return redirect(url_for('case_prefixes', case_id=case_id))
+        
+        return render_template('edit_prefix.html', title="Edit Prefix", prefix=prefix)
+
+    @app.route('/case/<int:case_id>/renumber-bates', methods=['GET', 'POST'])
+    def renumber_case_bates(case_id):
+        from app.models.case import Case
+        from app.models.document import Document
+        from app.utils.bates import BatesManager
+        
+        case = Case.query.get_or_404(case_id)
+        
+        if request.method == 'POST':
+            start_number = request.form.get('start_number', '1')
+            try:
+                start_number = int(start_number)
+            except ValueError:
+                flash('Starting number must be an integer', 'error')
+                return redirect(url_for('renumber_case_bates', case_id=case_id))
+            
+            # Get all documents in case, sorted by original bates sequence
+            documents = Document.query.filter_by(case_id=case_id).order_by(Document.bates_sequence).all()
+            
+            # Renumber all documents
+            bates_manager = BatesManager()
+            for i, doc in enumerate(documents):
+                new_sequence = start_number + i
+                new_bates = f"{case.bates_prefix}-{str(new_sequence).zfill(6)}"
+                
+                # Update PDF if needed
+                if doc.file_extension.lower() == '.pdf':
+                    try:
+                        stamped_path = bates_manager._stamp_pdf(doc.local_path, new_bates, doc.page_count)
+                        doc.local_path = stamped_path
+                    except Exception as e:
+                        flash(f'Error re-stamping document {doc.original_filename}: {str(e)}', 'warning')
+                
+                # Update document record
+                doc.bates_number = new_bates
+                doc.bates_start = new_bates
+                doc.bates_end = new_bates
+                doc.bates_sequence = new_sequence
+            
+            # Update case sequence
+            case.current_sequence = start_number + len(documents)
+            db.session.commit()
+            
+            flash(f'Successfully renumbered {len(documents)} documents', 'success')
+            return redirect(url_for('view_case', case_id=case_id))
+        
+        return render_template('renumber_bates.html', case=case)
+    
+    @app.route('/case/<int:case_id>/prefixes', methods=['GET', 'POST'])
+    def case_prefixes(case_id):
+        from app.models.case import Case
+        from app.models.bates_prefix import BatesPrefix
+        
+        case = Case.query.get_or_404(case_id)
+        
+        if request.method == 'POST':
+            prefix = request.form.get('prefix', '').strip()
+            description = request.form.get('description', '')
+            start_number = request.form.get('start_number', '1')
+            is_default = 'is_default' in request.form
+            
+            if not prefix:
+                flash('Prefix cannot be empty', 'error')
+                return redirect(url_for('case_prefixes', case_id=case_id))
+            
+            try:
+                start_number = int(start_number)
+                if start_number < 1:
+                    raise ValueError()
+            except ValueError:
+                flash('Starting number must be a positive integer', 'error')
+                return redirect(url_for('case_prefixes', case_id=case_id))
+            
+            # Check if prefix already exists for this case
+            existing = BatesPrefix.query.filter_by(case_id=case_id, prefix=prefix).first()
+            if existing:
+                flash(f'Prefix "{prefix}" already exists for this case', 'error')
+                return redirect(url_for('case_prefixes', case_id=case_id))
+            
+            # If this is set as default, unset any existing default
+            if is_default:
+                current_default = BatesPrefix.query.filter_by(case_id=case_id, is_default=True).first()
+                if current_default:
+                    current_default.is_default = False
+            
+            # If this is the first prefix, make it default regardless
+            first_prefix = BatesPrefix.query.filter_by(case_id=case_id).count() == 0
+            
+            # Create new prefix
+            new_prefix = BatesPrefix(
+                case_id=case_id,
+                prefix=prefix,
+                description=description,
+                current_sequence=start_number,
+                is_default=(is_default or first_prefix)
+            )
+            db.session.add(new_prefix)
+            db.session.commit()
+            
+            flash(f'Prefix "{prefix}" added successfully', 'success')
+            return redirect(url_for('case_prefixes', case_id=case_id))
+        
+        prefixes = BatesPrefix.query.filter_by(case_id=case_id).all()
+        return render_template('case_prefixes.html', title="Manage Bates Prefixes", case=case, prefixes=prefixes)
+
+    @app.route('/prefix/<int:prefix_id>/delete', methods=['POST'])
+    def delete_prefix(prefix_id):
+        from app.models.bates_prefix import BatesPrefix
+        
+        prefix = BatesPrefix.query.get_or_404(prefix_id)
+        case_id = prefix.case_id
+        
+        # Don't allow deleting the default prefix
+        if prefix.is_default:
+            flash('Cannot delete the default prefix', 'error')
+            return redirect(url_for('case_prefixes', case_id=case_id))
+        
+        db.session.delete(prefix)
+        db.session.commit()
+        
+        flash(f'Prefix "{prefix.prefix}" deleted successfully', 'success')
+        return redirect(url_for('case_prefixes', case_id=case_id))
+
+    @app.route('/prefix/<int:prefix_id>/set-default', methods=['POST'])
+    def set_default_prefix(prefix_id):
+        from app.models.bates_prefix import BatesPrefix
+        
+        prefix = BatesPrefix.query.get_or_404(prefix_id)
+        case_id = prefix.case_id
+        
+        # Unset current default
+        current_default = BatesPrefix.query.filter_by(case_id=case_id, is_default=True).first()
+        if current_default:
+            current_default.is_default = False
+        
+        # Set new default
+        prefix.is_default = True
+        db.session.commit()
+        
+        flash(f'"{prefix.prefix}" is now the default prefix', 'success')
+        return redirect(url_for('case_prefixes', case_id=case_id))
+
     # Error handlers
     @app.errorhandler(404)
     def page_not_found(e):
@@ -374,6 +720,7 @@ def create_app(config_name='default'):
         from app.models.case import Case
         from app.models.document import Document
         from app.models.tag import Tag
+        from app.models.bates_prefix import BatesPrefix
         db.create_all()
         create_default_tags(app)
     

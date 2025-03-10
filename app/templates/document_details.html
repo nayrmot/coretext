@@ -11,3 +11,13 @@
         Manage Tags
     </a>
 </div>
+
+<div class="mb-3">
+    <h5>Bates Number:</h5>
+    <p>{{ document.bates_number }}
+        <a href="{{ url_for('edit_bates', document_id=document.id) }}" 
+           class="btn btn-sm btn-outline-primary ml-2">
+            <i class="fas fa-edit"></i> Edit
+        </a>
+    </p>
+</div>
