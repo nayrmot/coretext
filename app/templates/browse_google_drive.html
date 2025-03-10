@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container{% if is_mobile %} mobile{% endif %}">
+    <h1 class="mb-4">Browse Google Drive</h1>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Files for {{ case.case_name }}</h4>
+            <a href="{{ url_for('main.case', case_id=case.id) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Case
+            </a>
+        </div>
+        <div class="card-body">
+            {% if not case.google_drive_enabled %}
+            <div class="alert alert-warning">
+                Google Drive integration is not enabled for this case.
+                <a href="{{ url_for('main.case_settings', case_id=case.id) }}">Enable it in case settings</a>.
+            </div>
+            {% else %}
+            <!-- Breadcrumb navigation -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.browse_google_drive', case_id=case.id, folder_id=case.drive_folder_id) }}">Root</a>
+                    </li>
+
+                    {% for folder in parent_folders %}
+                    {% if loop.last %}
+                    <li class="breadcrumb-item active">{{ folder.name }}</li>
+                    {% else %}
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.browse_google_drive', case_id=case.id, folder_id=folder.id, parents=parent_folders[:loop.index]|tojson) }}">{{ folder.name }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ol>
+            </nav>
+
+            <form method="POST" action="{{ url_for('main.browse_google_drive', case_id=case.id, folder_id=folder_id, parents=parent_folders|tojson) }}">
+                <!-- File browser -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;">
+                                    <input type="checkbox" id="select-all">
+                                </th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Modified</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if contents %}
+                            {% for item in contents %}
+                            <tr>
+                                <td>
+                                    {% if item.type == 'file' %}
+                                    <input type="checkbox" name="selected_files" value="{{ item.id }}" class="file-checkbox">
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.type == 'folder' %}
+                                    <a href="{{ url_for('main.browse_google_drive', case_id=case.id, folder_id=item.id, parents=(parent_folders + [{'id': folder_id, 'name': item.name}])|tojson) }}">
+                                        <i class="fas fa-folder text-warning"></i>
+                                        {{ item.name }}
+                                    </a>
+                                    {% else %}
+                                    <i class="fas fa-file-alt text-primary"></i>
+                                    {{ item.name }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.type == 'folder' %}
+                                    Folder
+                                    {% else %}
+                                    {{ item.mime_type|default('File') }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.size %}
+                                    {{ (item.size|int / 1024)|round(1) }} KB
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.modified_time %}
+                                    {{ item.modified_time|datetime }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No files found in this folder.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Import section -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Import Selected Files</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="document_type">Document Type</label>
+                            <select class="form-control" id="document_type" name="document_type">
+                                <option value="">-- Select Document Type --</option>
+                                {% for doc_type in document_types %}
+                                <option value="{{ doc_type }}">{{ doc_type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="apply_bates" name="apply_bates" checked>
+                                <label class="form-check-label" for="apply_bates">
+                                    Apply Bates Numbers
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="bates-number-group">
+                            <label for="start_number">Starting Bates Number (optional)</label>
+                            <input type="number" class="form-control" id="start_number" name="start_number">
+                            <small class="form-text text-muted">Leave blank to use the next available number.</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="import-btn" disabled>
+                            <i class="fas fa-file-import"></i> Import Selected Files
+                        </button>
+                    </div>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all functionality
+    const selectAllCheckbox = document.getElementById('select-all');
+    const fileCheckboxes = document.querySelectorAll('.file-checkbox');
+    const importButton = document.getElementById('import-btn');
+
+    // Update the import button state
+    function updateImportButtonState() {
+        const anyChecked = Array.from(fileCheckboxes).some(checkbox => checkbox.checked);
+        importButton.disabled = !anyChecked;
+    }
+
+    // Select all checkbox
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            fileCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateImportButtonState();
+        });
+    }
+
+    // Individual checkboxes
+    fileCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Update select all checkbox
+            if (selectAllCheckbox) {
+                const allChecked = Array.from(fileCheckboxes).every(cb => cb.checked);
+                selectAllCheckbox.checked = allChecked;
+
+                // If not all checked and some are checked, set indeterminate state
+                const someChecked = Array.from(fileCheckboxes).some(cb => cb.checked);
+                selectAllCheckbox.indeterminate = someChecked && !allChecked;
+            }
+
+            // Update import button
+            updateImportButtonState();
+        });
+    });
+
+    // Toggle Bates number field
+    const applyBatesCheckbox = document.getElementById('apply_bates');
+    const batesNumberGroup = document.getElementById('bates-number-group');
+
+    if (applyBatesCheckbox && batesNumberGroup) {
+        applyBatesCheckbox.addEventListener('change', function() {
+            batesNumberGroup.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // Initial update of import button state
+    updateImportButtonState();
+});
+</script>
+
+{% endblock %}

@@ -1,12 +1,124 @@
+aiohappyeyeballs @ file:///home/conda/feedstock_root/build_artifacts/aiohappyeyeballs_1741285157081/work
+aiohttp @ file:///home/conda/feedstock_root/build_artifacts/aiohttp_1740481421075/work
+aiosignal @ file:///home/conda/feedstock_root/build_artifacts/aiosignal_1734342155601/work
+alembic==1.15.1
+annotated-types==0.7.0
+anyio==4.8.0
+asgiref @ file:///home/conda/feedstock_root/build_artifacts/asgiref_1733215607532/work
+async-timeout @ file:///home/conda/feedstock_root/build_artifacts/async-timeout_1733235340728/work
+attrs @ file:///home/conda/feedstock_root/build_artifacts/attrs_1737819173731/work
+blinker @ file:///home/conda/feedstock_root/build_artifacts/blinker_1731096409132/work
+blis==0.7.11
+Brotli @ file:///C:/b/abs_c415aux9ra/croot/brotli-split_1736182803933/work
+cachetools==4.2.4
+catalogue==2.0.10
+certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1739515848642/work/certifi
+cffi @ file:///C:/b/abs_29_b57if3f/croot/cffi_1736184144340/work
+charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1735929714516/work
+click @ file:///D:/bld/click_1734858834134/work
+cloudpathlib==0.19.0
+colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
+confection==0.1.5
+cryptography @ file:///C:/b/abs_ae5lrkywtg/croot/cryptography_1740577842775/work
+cymem==2.0.8
+distro==1.9.0
+Django @ file:///home/conda/feedstock_root/build_artifacts/django_1741283895821/work
+django-user_agents @ file:///home/conda/feedstock_root/build_artifacts/django-user-agents_1736534476969/work
 Flask==2.0.1
+Flask-Migrate==4.1.0
 Flask-SQLAlchemy==2.5.1
 Flask-WTF==1.0.0
+frozenlist @ file:///home/conda/feedstock_root/build_artifacts/frozenlist_1737645256942/work
+google-api-core==2.10.2
+google-api-python-client @ file:///home/conda/feedstock_root/build_artifacts/google-api-python-client_1741209964639/work
 google-auth==2.3.3
+google-auth-httplib2 @ file:///home/conda/feedstock_root/build_artifacts/google-auth-httplib2_1733907410727/work
 google-auth-oauthlib==0.4.6
-google-api-python-client==2.32.0
 google-cloud-secret-manager==2.12.0
-pypdf2==2.10.5
-python-dotenv==0.19.2
-psycopg2-binary==2.9.3
+googleapis-common-protos @ file:///home/conda/feedstock_root/build_artifacts/googleapis-common-protos-feedstock_1741437415415/work
+greenlet==3.1.1
+grpc-google-iam-v1==0.14.1
+grpcio==1.71.0rc2
+grpcio-status==1.49.0rc1
 gunicorn==20.1.0
+h11==0.14.0
+h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1738578511449/work
+hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1737618293087/work
+httpcore==1.0.7
+httplib2 @ file:///home/conda/feedstock_root/build_artifacts/httplib2_1733927481809/work
+httpx==0.28.1
+hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1737618333194/work
+idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1733211830134/work
+itsdangerous==2.2.0
+Jinja2==3.1.6
+jiter==0.8.2
+langcodes==3.4.0
+language_data==1.2.0
+Mako==1.3.9
+marisa-trie==1.2.0
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+mdurl==0.1.2
+multidict @ file:///home/conda/feedstock_root/build_artifacts/multidict_1733913060962/work
+murmurhash==1.0.10
+numpy==1.26.4
+oauthlib @ file:///home/conda/feedstock_root/build_artifacts/oauthlib_1733752848439/work
+openai==1.65.5
+packaging==24.2
+pdf2image==1.17.0
+pdfminer.six==20231228
+pdfplumber==0.11.4
+pillow==11.1.0
+preshed==3.0.9
+propcache @ file:///home/conda/feedstock_root/build_artifacts/propcache_1737635524653/work
+proto-plus @ file:///home/conda/feedstock_root/build_artifacts/proto-plus_1738061909745/work
+protobuf==3.20.3
+psycopg2-binary==2.9.10
+pyasn1 @ file:///home/conda/feedstock_root/build_artifacts/pyasn1_1733217608156/work
+pyasn1_modules @ file:///home/conda/feedstock_root/build_artifacts/pyasn1-modules_1733324602540/work
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+pydantic==2.10.6
+pydantic_core==2.27.2
+Pygments==2.19.1
+PyJWT @ file:///home/conda/feedstock_root/build_artifacts/pyjwt_1732782409051/work
+pyOpenSSL @ file:///home/conda/feedstock_root/build_artifacts/pyopenssl_1737243356468/work
+pyparsing @ file:///home/conda/feedstock_root/build_artifacts/pyparsing_1735698276679/work
+PyPDF2==2.10.5
+pypdfium2==4.30.0
+PySocks @ file:///D:/bld/pysocks_1733217287171/work
+pytesseract==0.3.13
+python-dotenv==0.19.2
+pyu2f @ file:///home/conda/feedstock_root/build_artifacts/pyu2f_1733738580568/work
+reportlab==4.2.2
+requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1733217035951/work
+requests-oauthlib @ file:///home/conda/feedstock_root/build_artifacts/requests-oauthlib_1733772243268/work
+rich==13.9.4
+rsa @ file:///home/conda/feedstock_root/build_artifacts/rsa_1733662684165/work
+setuptools==75.8.0
+shellingham==1.5.4
+six @ file:///home/conda/feedstock_root/build_artifacts/six_1733380938961/work
+smart-open==5.2.1
+sniffio==1.3.1
+spacy==3.7.6
+spacy-legacy==3.0.12
+spacy-loggers==1.0.5
+SQLAlchemy==1.4.50
+sqlparse @ file:///home/conda/feedstock_root/build_artifacts/sqlparse_1734007102193/work
+srsly==2.4.8
+thinc==8.2.5
+tqdm==4.67.1
+typer==0.12.5
+typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/typing_extensions_1733188668063/work
+ua-parser @ file:///home/conda/feedstock_root/build_artifacts/ua-parser_1738431489693/work
+ua-parser-builtins @ file:///home/conda/feedstock_root/build_artifacts/ua-parser-builtins_1732911999566/work/ua_parser_builtins-0.18.0-py3-none-any.whl#sha256=51cbc3d6ab9c533fc12fc7cededbef503c8d04e465d0aff20d869e15320b5ca9
+uritemplate @ file:///home/conda/feedstock_root/build_artifacts/uritemplate_1733927878495/work
+urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1734859416348/work
+user-agents @ file:///home/conda/feedstock_root/build_artifacts/user-agents_1734956585899/work
+wasabi==1.1.3
+weasel==0.4.1
 Werkzeug==2.0.1
+wheel==0.45.1
+win_inet_pton @ file:///D:/bld/win_inet_pton_1733130564612/work
+WTForms==3.2.1
+yarl @ file:///home/conda/feedstock_root/build_artifacts/yarl_1737575798240/work
+zstandard @ file:///C:/b/abs_31t8xmrv_h/croot/zstandard_1731356578015/work

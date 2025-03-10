@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container{% if is_mobile %} mobile{% endif %}">
+    <h1 class="mb-4">Case Settings: {{ case.case_name }}</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">Basic Information</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('main.case_settings', case_id=case.id) }}">
+                <div class="form-group row">
+                    <label for="case_name" class="col-sm-3 col-form-label">Case Name</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="case_name" name="case_name" value="{{ case.case_name }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <label for="case_number" class="col-sm-3 col-form-label">Case Number</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="case_number" name="case_number" value="{{ case.case_number }}">
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <label for="bates_prefix" class="col-sm-3 col-form-label">Bates Prefix</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="bates_prefix" name="bates_prefix" value="{{ case.bates_prefix }}">
+                        <small class="form-text text-muted">This prefix will be used for all Bates numbers in this case.</small>
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <label for="description" class="col-sm-3 col-form-label">Description</label>
+                    <div class="col-sm-9">
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ case.description or '' }}</textarea>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="form-group row">
+                    <div class="col-sm-3">Google Drive Integration</div>
+                    <div class="col-sm-9">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="google_drive_enabled" name="google_drive_enabled" {% if case.google_drive_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="google_drive_enabled">
+                                Enable Google Drive integration
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="drive-settings" {% if not case.google_drive_enabled %}style="display: none;" {% endif %}>
+                    <div class="form-group row">
+                        <label for="gdrive_root_folder" class="col-sm-3 col-form-label">Google Drive Root Folder</label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="gdrive_root_folder" name="gdrive_root_folder" value="{{ case.gdrive_root_folder or '' }}" placeholder="e.g., Shared drives/Clients/Case Name">
+                            <small class="form-text text-muted">Path to the root folder for this case in Google Drive.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label for="gdrive_original_path" class="col-sm-3 col-form-label">Original Documents Path</label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="gdrive_original_path" name="gdrive_original_path" value="{{ case.gdrive_original_path or 'Documents/Original' }}">
+                            <small class="form-text text-muted">Relative path within the root folder for original documents.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label for="gdrive_bates_path" class="col-sm-3 col-form-label">Bates Labeled Path</label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="gdrive_bates_path" name="gdrive_bates_path" value="{{ case.gdrive_bates_path or 'Documents/Bates Labeled' }}">
+                            <small class="form-text text-muted">Relative path within the root folder for Bates labeled documents.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label for="document_types" class="col-sm-3 col-form-label">Document Types</label>
+                        <div class="col-sm-9">
+                            <div id="document-types-container">
+                                {% for doc_type in document_types %}
+                                <div class="input-group mb-2 document-type-input">
+                                    <input type="text" class="form-control" name="document_types" value="{{ doc_type }}">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-danger remove-type">×</button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+
+                                <div class="input-group mb-2 document-type-input">
+                                    <input type="text" class="form-control" name="document_types" placeholder="Add document type">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-danger remove-type">×</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-document-type">
+                                <i class="fas fa-plus"></i> Add Document Type
+                            </button>
+
+                            <small class="form-text text-muted">
+                                Define document categories for this case (e.g., Pleadings, Discovery, Correspondence).
+                                Folders will be created for each type.
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <div class="col-sm-9 offset-sm-3">
+                            <button type="button" id="test-google-drive" class="btn btn-outline-info">
+                                <i class="fas fa-check-circle"></i> Test Google Drive Connection
+                            </button>
+                            <div id="drive-test-result" class="mt-2" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group row mt-4">
+                    <div class="col-sm-9 offset-sm-3">
+                        <a href="{{ url_for('main.case', case_id=case.id) }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle Google Drive settings visibility
+    const driveCheckbox = document.getElementById('google_drive_enabled');
+    const driveSettings = document.getElementById('drive-settings');
+
+    driveCheckbox.addEventListener('change', function() {
+        driveSettings.style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Add new document type field
+    const addDocTypeBtn = document.getElementById('add-document-type');
+    const docTypesContainer = document.getElementById('document-types-container');
+
+    addDocTypeBtn.addEventListener('click', function() {
+        const newTypeDiv = document.createElement('div');
+        newTypeDiv.className = 'input-group mb-2 document-type-input';
+        newTypeDiv.innerHTML = `
+            <input type="text" class="form-control" name="document_types" placeholder="Add document type">
+            <div class="input-group-append">
+                <button type="button" class="btn btn-outline-danger remove-type">×</button>
+            </div>
+        `;
+        docTypesContainer.appendChild(newTypeDiv);
+
+        // Focus the new input
+        const newInput = newTypeDiv.querySelector('input');
+        newInput.focus();
+    });
+
+    // Remove document type field
+    docTypesContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-type')) {
+            const inputGroup = e.target.closest('.document-type-input');
+
+            // Don't remove if it's the last one or if its value is not empty
+            const allInputs = document.querySelectorAll('.document-type-input');
+            if (allInputs.length > 1) {
+                inputGroup.remove();
+            } else {
+                // If it's the last one, just clear the value
+                inputGroup.querySelector('input').value = '';
+            }
+        }
+    });
+
+    // Test Google Drive connection
+    const testDriveBtn = document.getElementById('test-google-drive');
+    const testResultDiv = document.getElementById('drive-test-result');
+
+    testDriveBtn.addEventListener('click', function() {
+        const rootFolder = document.getElementById('gdrive_root_folder').value.trim();
+        if (!rootFolder) {
+            testResultDiv.innerHTML = '<div class="alert alert-warning">Please enter a Google Drive root folder path.</div>';
+            testResultDiv.style.display = 'block';
+            return;
+        }
+
+        // Show loading state
+        testDriveBtn.disabled = true;
+        testDriveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+        testResultDiv.innerHTML = '<div class="alert alert-info">Testing Google Drive connection...</div>';
+        testResultDiv.style.display = 'block';
+
+        // Make AJAX request to test connection
+        fetch('{{ url_for("main.test_google_drive", case_id=case.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                root_folder: rootFolder,
+                original_path: document.getElementById('gdrive_original_path').value,
+                bates_path: document.getElementById('gdrive_bates_path').value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                testResultDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            } else {
+                testResultDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+            }
+        })
+        .catch(error => {
+            testResultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        })
+        .finally(() => {
+            testDriveBtn.disabled = false;
+            testDriveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Test Google Drive Connection';
+        });
+    });
+});
+</script>
+{% endblock %}

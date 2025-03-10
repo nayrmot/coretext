@@ -1,7 +1,8 @@
 # File: app/models/document.py
 from app import db
 from datetime import datetime
-from app.models.tag import DocumentTag
+from app.models.document_tag import DocumentTag
+
 
 class Document(db.Model):
     """Document model for CoreText document management system."""
@@ -10,9 +11,20 @@ class Document(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     case_id = db.Column(db.Integer, db.ForeignKey('cases.id'), nullable=False)
-    tags = db.relationship('Tag', secondary='document_tags', 
-                      backref=db.backref('documents', lazy='dynamic'),
-                      overlaps="document_associations,tag,document,tag_associations")
+
+    # Direct many-to-many relationship (no backref here, only back_populates)
+    tags = db.relationship(
+        'Tag',
+        secondary='document_tags',
+        back_populates='documents',
+        overlaps="tag_associations,document_associations"
+    )
+
+    tag_associations = db.relationship(
+        'DocumentTag',
+        back_populates='document',
+        overlaps="tags,documents"
+    )
     
     # File information
     original_filename = db.Column(db.String(255), nullable=False)

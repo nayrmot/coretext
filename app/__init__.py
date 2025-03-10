@@ -1,11 +1,13 @@
 from flask import Flask, render_template, flash, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate  # <-- Import Flask-Migrate
 import logging
 from logging.handlers import RotatingFileHandler
 import os
 
 # Initialize extensions
 db = SQLAlchemy()
+migrate = Migrate()  # <-- Initialize Migrate
 
 def configure_logging():
     log_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
@@ -76,6 +78,28 @@ def create_app(config_name='default'):
     
     # Initialize extensions with app
     db.init_app(app)
+    migrate.init_app(app, db)  # <-- Initialize migrate after db.init_app
+
+    # Add datetime filter
+    @app.template_filter('datetime')
+    def format_datetime(value, format='%Y-%m-%d %H:%M'):
+        """Format a datetime object to a string."""
+        if value is None:
+            return ""
+        
+        # If it's a string, try to parse it
+        if isinstance(value, str):
+            try:
+                from dateutil import parser
+                value = parser.parse(value)
+            except:
+                return value
+        
+        # Format the datetime
+        try:
+            return value.strftime(format)
+        except:
+            return str(value)
     
     # Home page
     @app.route('/')
